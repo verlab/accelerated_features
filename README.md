@@ -87,8 +87,8 @@ For your convenience, we provide ready to use notebooks for some examples.
 
 |            **Description**     |  **Notebook**                     |
 |--------------------------------|-------------------------------|
-| Minimal example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/DALF_CVPR_2023/blob/main/notebooks/registration_with_DALF.ipynb) |
-| Matching & registration example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/DALF_CVPR_2023/blob/main/notebooks/registration_with_DALF.ipynb) |
+| Minimal example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/minimal_example.ipynb) |
+| Matching & registration example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_matching.ipynb) |
 | Torch hub example | Coming soon. |
 
 

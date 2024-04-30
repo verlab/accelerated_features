@@ -89,7 +89,7 @@ For your convenience, we provide ready to use notebooks for some examples.
 |--------------------------------|-------------------------------|
 | Minimal example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/minimal_example.ipynb) |
 | Matching & registration example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_matching.ipynb) |
-| Torch hub example | Coming soon. |
+| Torch hub example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_torch_hub.ipynb) |
 
 
 ### Inference
@@ -105,6 +105,16 @@ output = xfeat.detectAndCompute(torch.randn(1,3,480,640), top_k = 4096)[0]
 Or you can use this [script](./minimal_example.py) in the root folder:
 ```bash
 python3 minimal_example.py
+```
+
+If you already have pytorch, simply use torch hub if you like it:
+```python
+import torch
+
+xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True, top_k = 4096)
+
+#Simple inference with batch sz = 1
+output = xfeat.detectAndCompute(torch.randn(1,3,480,640), top_k = 4096)[0]
 ```
 
 ### Training

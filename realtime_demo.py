@@ -22,6 +22,7 @@ def argparser():
     parser.add_argument('--max_kpts', type=int, default=3_000, help='Maximum number of keypoints.')
     parser.add_argument('--method', type=str, choices=['ORB', 'SIFT', 'XFeat'], default='XFeat', help='Local feature detection method to use.')
     parser.add_argument('--cam', type=int, default=0, help='Webcam device number.')
+    parser.add_argument('--use_engine', type=bool, default=False, help='Use generated TensorRT engine file.')
     return parser.parse_args()
 
 
@@ -59,13 +60,13 @@ class Method:
         self.descriptor = descriptor
         self.matcher = matcher
 
-def init_method(method, max_kpts):
+def init_method(method, max_kpts, use_engine=False):
     if method == "ORB":
         return Method(descriptor=cv2.ORB_create(max_kpts, fastThreshold=10), matcher=cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True))
     elif method == "SIFT":
         return Method(descriptor=cv2.SIFT_create(max_kpts, contrastThreshold=-1, edgeThreshold=1000), matcher=cv2.BFMatcher(cv2.NORM_L2, crossCheck=True))
     elif method == "XFeat":
-        return Method(descriptor=CVWrapper(XFeat(top_k = max_kpts, use_engine=True)), matcher=XFeat(use_engine=True))
+        return Method(descriptor=CVWrapper(XFeat(top_k = max_kpts, use_engine=use_engine)), matcher=XFeat(use_engine=use_engine))
     else:
         raise RuntimeError("Invalid Method.")
 
@@ -97,7 +98,7 @@ class MatchingDemo:
         self.max_cnt = 30 #avg FPS over this number of frames
 
         #Set local feature method here -- we expect cv2 or Kornia convention
-        self.method = init_method(args.method, max_kpts=args.max_kpts)
+        self.method = init_method(args.method, max_kpts=args.max_kpts, use_engine=args.use_engine)
         
         # Setting up font for captions
         self.font = cv2.FONT_HERSHEY_SIMPLEX
@@ -129,9 +130,9 @@ class MatchingDemo:
     def draw_quad(self, frame, point_list):
         if len(self.corners) > 1:
             for i in range(len(self.corners) - 1):
-                cv2.line(frame, point_list[i], point_list[i + 1], self.line_color, self.line_thickness, lineType = self.line_type)
+                cv2.line(frame, tuple(point_list[i]), tuple(point_list[i + 1]), self.line_color, self.line_thickness, lineType = self.line_type)
             if len(self.corners) == 4:  # Close the quadrilateral if 4 corners are defined
-                cv2.line(frame, point_list[3], point_list[0], self.line_color, self.line_thickness, lineType = self.line_type)
+                cv2.line(frame, tuple(point_list[3]), tuple(point_list[0]), self.line_color, self.line_thickness, lineType = self.line_type)
 
     def mouse_callback(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:

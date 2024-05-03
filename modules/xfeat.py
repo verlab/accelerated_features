@@ -11,8 +11,6 @@ import torch.nn.functional as F
 
 import tqdm
 
-from typing import List
-
 from modules.model import *
 from modules.interpolator import InterpolateSparse2d
 
@@ -26,7 +24,8 @@ class XFeat(nn.Module):
 		super().__init__()
 		self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self.top_k = top_k
-		if use_engine:
+		self.use_engine = use_engine
+		if self.use_engine:
 			if os.path.exists(os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'):
 				weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'
 			else:
@@ -64,12 +63,12 @@ class XFeat(nn.Module):
 		B, _, _H1, _W1 = x.shape
         
 		M1, K1, H1 = self.net(x)
+
 		M1 = F.normalize(M1, dim=1)
 
 		#Convert logits to heatmap and extract kpts
 		K1h = self.get_kpts_heatmap(K1)
 		mkpts = self.NMS(K1h, threshold=0.05, kernel_size=5)
-
 		#Compute reliability scores
 		_nearest = InterpolateSparse2d('nearest')
 		_bilinear = InterpolateSparse2d('bilinear')
@@ -281,7 +280,6 @@ class XFeat(nn.Module):
 
 		cossim = feats1 @ feats2.t()
 		cossim_t = feats2 @ feats1.t()
-		
 		_, match12 = cossim.max(dim=1)
 		_, match21 = cossim_t.max(dim=1)
 
@@ -361,48 +359,18 @@ class XFeat(nn.Module):
 		
 		import tensorrt as trt
 		from torch2trt import TRTModule
+		trt.init_libnvinfer_plugins(None,'')
 
 		with trt.Logger() as logger, trt.Runtime(logger) as runtime:
 			with open(engine_path, 'rb') as f:
 				engine_bytes = f.read()
 			engine = runtime.deserialize_cuda_engine(engine_bytes)
 
-		base_module = TRTModule(
+		xfeat_trt = TRTModule(
 			engine,
 			input_names=XFeatModel.get_xfeat_input_names(),
         	output_names=XFeatModel.get_xfeat_output_names(),
 		)
 
-		class Wrapper(torch.nn.Module):
-			def __init__(self, base_module: TRTModule, max_batch_size: int = 1):
-				super().__init__()
-				self.base_module = base_module
-				self.max_batch_size = max_batch_size
-
-			@torch.no_grad()
-			def forward(self, image):
-
-				b = image.shape[0]
-
-				results = []
-
-				for start_index in range(0, b, self.max_batch_size):
-					end_index = min(b, start_index + self.max_batch_size)
-					image_slice = image[start_index:end_index]
-					# with torch_timeit_sync("run_engine"):
-					output = self.base_module(image_slice)
-					results.append(
-						output
-					)
-
-				return XFeatModelOutput(
-					image_embeds=torch.cat([r[0] for r in results], dim=0),
-					image_class_embeds=torch.cat([r[1] for r in results], dim=0),
-					logit_shift=torch.cat([r[2] for r in results], dim=0),
-					logit_scale=torch.cat([r[3] for r in results], dim=0),
-					pred_boxes=torch.cat([r[4] for r in results], dim=0)
-				)
-
-		xfeat_engine = Wrapper(base_module=base_module)
-		return xfeat_engine
+		return xfeat_trt
 

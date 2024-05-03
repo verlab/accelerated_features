@@ -163,8 +163,3 @@ class XFeatModel(nn.Module):
 	def get_xfeat_output_names() -> List[str]:
 		return ["feats", "keypoints", "heatmap"]
 
-@dataclass
-class XFeatModelOutput:
-	feats: torch.Tensor
-	keypoints: torch.Tensor
-	heatmap: torch.Tensor

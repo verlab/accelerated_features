@@ -20,11 +20,15 @@ class XFeat(nn.Module):
 		It supports inference for both sparse and semi-dense feature extraction & matching.
 	"""
 
-	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt', top_k = 4096, use_engine=False):
+	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt',
+			   	top_k = 4096,
+				use_engine=False,
+				use_fp16=False):
 		super().__init__()
 		self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self.top_k = top_k
 		self.use_engine = use_engine
+		self.use_fp16 = use_fp16
 		if self.use_engine:
 			if os.path.exists(os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'):
 				weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'
@@ -32,6 +36,8 @@ class XFeat(nn.Module):
 				raise Exception('Engine file does not exist.')
 			self.net = XFeat.load_xfeat_engine(weights)
 			self.dev = 'cuda' # force cuda for TensorRT
+			if self.use_fp16:
+				self.net.half() 
 		else:
 			self.net = XFeatModel().to(self.dev).eval()
 			if weights is not None:
@@ -182,6 +188,8 @@ class XFeat(nn.Module):
 		if isinstance(x, np.ndarray) and x.shape == 3:
 			x = torch.tensor(x).permute(2,0,1)[None]
 		x = x.to(self.dev).float()
+		if self.use_fp16:
+			x.half()
 
 		H, W = x.shape[-2:]
 		_H, _W = (H//32) * 32, (W//32) * 32

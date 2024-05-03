@@ -118,7 +118,11 @@ output = xfeat.detectAndCompute(torch.randn(1,3,480,640), top_k = 4096)[0]
 ```
 
 ### TensorRT - Export
-Its advisible to use a  [NGC container](https://catalog.ngc.nvidia.com/containers). For example, for the NVIDIA Jetson platform refer to [L4T ML](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-ml/tags). The two additional dependencies you need are [TensorRT](https://github.com/NVIDIA/TensorRT), which is usually available in L4T-ML containers, and [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt).
+Its advisible to use a  [NGC container](https://catalog.ngc.nvidia.com/containers). For example, for the NVIDIA Jetson platform refer to [L4T ML](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-ml/tags). The additional dependencies you need:
+- [TensorRT](https://github.com/NVIDIA/TensorRT) - usually availble inside the docker container
+- `onnx`
+- `onnxruntime`
+- [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt)
 
 ```
 python3 export.py --help

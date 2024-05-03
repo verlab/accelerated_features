@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import time
 
 from typing import List
-from dataclasses import dataclass
+
 class BasicLayer(nn.Module):
 	"""
 	  Basic Convolutional Layer: Conv2d -> BatchNorm -> ReLU

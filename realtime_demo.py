@@ -65,7 +65,7 @@ def init_method(method, max_kpts):
     elif method == "SIFT":
         return Method(descriptor=cv2.SIFT_create(max_kpts, contrastThreshold=-1, edgeThreshold=1000), matcher=cv2.BFMatcher(cv2.NORM_L2, crossCheck=True))
     elif method == "XFeat":
-        return Method(descriptor=CVWrapper(XFeat(top_k = max_kpts)), matcher=XFeat())
+        return Method(descriptor=CVWrapper(XFeat(top_k = max_kpts, use_engine=True)), matcher=XFeat(use_engine=True))
     else:
         raise RuntimeError("Invalid Method.")
 

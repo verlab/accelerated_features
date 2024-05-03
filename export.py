@@ -15,9 +15,17 @@ def build_onnx_engine(weights: str,
         raise Exception("Onnx file path cannot be None.")
     dev = 'cpu'
     net = XFeatModel().to(dev)
-    net.load_state_dict(torch.load(weights, map_location=dev))
-    net.eval()
-    onnx_weight = None
+    class TempModule(torch.nn.Module):
+        def __init__(self, parent):
+            super().__init__()
+            self.parent = parent
+        def forward(self, image):
+            output = self.parent.forward(image)
+            return (
+                output[0], #feats
+                output[1], #keypoints
+                output[2]  #heatmap
+            )
     #Random input
     x = torch.randn(1,3,*imgsz).to(dev)
     if onnx_weight is None:
@@ -28,13 +36,13 @@ def build_onnx_engine(weights: str,
             }
     else:
         dyanmic_axis = {}
-
+    net = TempModule(net)
     torch.onnx.export(
         net,
         x,
         onnx_weight,
-	    input_names=["image"],
-        output_names=["feats", "keypoints", "heatmap"],
+	    input_names=XFeatModel.get_xfeat_input_names(),
+        output_names=XFeatModel.get_xfeat_output_names(),
         dynamic_axes=dyanmic_axis,
         opset_version=onnx_opset,
     )
@@ -58,7 +66,7 @@ def build_tensorrt_engine(weights: str,
 
     if onnx_weight.endswith(".onnx"):
         # Replace ".pt" with ".onnx"
-        engine_weight = weights[:-5] + ".engine"
+        engine_weight = onnx_weight[:-5] + ".engine"
     else:
         raise Exception("File path does not end with '.onnx'.")
 
@@ -73,7 +81,7 @@ def build_tensorrt_engine(weights: str,
 
     subprocess.call(args)
     print(f"Finished TensorRT engine export to {engine_weight}.")
-    
+
 def main():
     parser = argparse.ArgumentParser(description='Create ONNX and TensorRT export for XFeat.')
     parser.add_argument('--weights', type=str, default=f'{os.path.abspath(os.path.dirname(__file__))}/weights/xfeat.pt', help='Path to the weights pt file to process')

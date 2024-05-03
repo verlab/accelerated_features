@@ -9,6 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import time
 
+from typing import List
+from dataclasses import dataclass
 class BasicLayer(nn.Module):
 	"""
 	  Basic Convolutional Layer: Conv2d -> BatchNorm -> ReLU
@@ -152,3 +154,17 @@ class XFeatModel(nn.Module):
 		keypoints = self.keypoint_head(self._unfold2d(x, ws=8)) #Keypoint map logits
 
 		return feats, keypoints, heatmap
+
+	@staticmethod
+	def get_xfeat_input_names() -> List[str]:
+		return ["image"]
+	
+	@staticmethod
+	def get_xfeat_output_names() -> List[str]:
+		return ["feats", "keypoints", "heatmap"]
+
+@dataclass
+class XFeatModelOutput:
+	feats: torch.Tensor
+	keypoints: torch.Tensor
+	heatmap: torch.Tensor

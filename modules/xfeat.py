@@ -11,6 +11,8 @@ import torch.nn.functional as F
 
 import tqdm
 
+from typing import List
+
 from modules.model import *
 from modules.interpolator import InterpolateSparse2d
 
@@ -20,18 +22,25 @@ class XFeat(nn.Module):
 		It supports inference for both sparse and semi-dense feature extraction & matching.
 	"""
 
-	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt', top_k = 4096):
+	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt', top_k = 4096, use_engine=False):
 		super().__init__()
 		self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-		self.net = XFeatModel().to(self.dev).eval()
 		self.top_k = top_k
-
-		if weights is not None:
-			if isinstance(weights, str):
-				print('loading weights from: ' + weights)
-				self.net.load_state_dict(torch.load(weights, map_location=self.dev))
+		if use_engine:
+			if os.path.exists(os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'):
+				weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.engine'
 			else:
-				self.net.load_state_dict(weights)
+				raise Exception('Engine file does not exist.')
+			self.net = XFeat.load_xfeat_engine(weights)
+			self.dev = 'cuda' # force cuda for TensorRT
+		else:
+			self.net = XFeatModel().to(self.dev).eval()
+			if weights is not None:
+				if isinstance(weights, str):
+					print('loading weights from: ' + weights)
+					self.net.load_state_dict(torch.load(weights, map_location=self.dev))
+				else:
+					self.net.load_state_dict(weights)
 
 		self.interpolator = InterpolateSparse2d('bicubic')
 
@@ -344,3 +353,56 @@ class XFeat(nn.Module):
 			x = torch.tensor(x).permute(0,3,1,2)/255
 
 		return x
+
+	@staticmethod
+	def load_xfeat_engine(engine_path: str):
+		if not engine_path.endswith(".engine"):
+			raise Exception('Invalid Engine file.')
+		
+		import tensorrt as trt
+		from torch2trt import TRTModule
+
+		with trt.Logger() as logger, trt.Runtime(logger) as runtime:
+			with open(engine_path, 'rb') as f:
+				engine_bytes = f.read()
+			engine = runtime.deserialize_cuda_engine(engine_bytes)
+
+		base_module = TRTModule(
+			engine,
+			input_names=XFeatModel.get_xfeat_input_names(),
+        	output_names=XFeatModel.get_xfeat_output_names(),
+		)
+
+		class Wrapper(torch.nn.Module):
+			def __init__(self, base_module: TRTModule, max_batch_size: int = 1):
+				super().__init__()
+				self.base_module = base_module
+				self.max_batch_size = max_batch_size
+
+			@torch.no_grad()
+			def forward(self, image):
+
+				b = image.shape[0]
+
+				results = []
+
+				for start_index in range(0, b, self.max_batch_size):
+					end_index = min(b, start_index + self.max_batch_size)
+					image_slice = image[start_index:end_index]
+					# with torch_timeit_sync("run_engine"):
+					output = self.base_module(image_slice)
+					results.append(
+						output
+					)
+
+				return XFeatModelOutput(
+					image_embeds=torch.cat([r[0] for r in results], dim=0),
+					image_class_embeds=torch.cat([r[1] for r in results], dim=0),
+					logit_shift=torch.cat([r[2] for r in results], dim=0),
+					logit_scale=torch.cat([r[3] for r in results], dim=0),
+					pred_boxes=torch.cat([r[4] for r in results], dim=0)
+				)
+
+		xfeat_engine = Wrapper(base_module=base_module)
+		return xfeat_engine
+

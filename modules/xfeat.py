@@ -136,6 +136,8 @@ class XFeat(nn.Module):
 
 		idxs0, idxs1 = self.match(out1['descriptors'], out2['descriptors'], min_cossim=min_cossim )
 
+		if torch.onnx.is_in_onnx_export():
+			return out1['keypoints'][idxs0], out2['keypoints'][idxs1]
 		return out1['keypoints'][idxs0].cpu().numpy(), out2['keypoints'][idxs1].cpu().numpy()
 
 	@torch.inference_mode()
@@ -167,6 +169,8 @@ class XFeat(nn.Module):
 		for b in range(B):
 			matches.append(self.refine_matches(out1, out2, matches = idxs_list, batch_idx=b))
 
+		if torch.onnx.is_in_onnx_export():
+			return matches if B > 1 else (matches[0][:, :2], matches[0][:, 2:])
 		return matches if B > 1 else (matches[0][:, :2].cpu().numpy(), matches[0][:, 2:].cpu().numpy())
 
 	def preprocess_tensor(self, x):

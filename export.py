@@ -103,7 +103,7 @@ if __name__ == "__main__":
         dynamic_axes = {"image0": {2: "height", 3: "width"}, "image1": {2: "height", 3: "width"}}
         torch.onnx.export(
             xfeat,
-            (x1, ),
+            (x1, x2),
             args.export_path,
             verbose=False,
             opset_version=args.opset,

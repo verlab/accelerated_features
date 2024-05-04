@@ -21,7 +21,12 @@ def preprocess_tensor(self, x):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Export XFeat model to ONNX.")
+    parser = argparse.ArgumentParser(description="Export XFeat/Matching model to ONNX.")
+    parser.add_argument(
+        "--xfeat_only",
+        action="store_true",
+        help="Export only the XFeat model.",
+    )
     parser.add_argument(
         "--height",
         type=int,
@@ -81,19 +86,32 @@ if __name__ == "__main__":
     x1 = torch.randn(1, 3, args.height, args.width, dtype=torch.float32, device='cpu')
     x2 = torch.randn(1, 3, args.height, args.width, dtype=torch.float32, device='cpu')
 
-    dynamic_axes = {"image0": {2: "height", 3: "width"}, "image1": {2: "height", 3: "width"}}
-
-    torch.onnx.export(
-        xfeat,
-        (x1, x2),
-        args.export_path,
-        verbose=False,
-        opset_version=args.opset,
-        do_constant_folding=True,
-        input_names=["image0", "image1"],
-        output_names=["mkpts_0", "mkpts_1"],
-        dynamic_axes=dynamic_axes if args.dynamic else None,
-    )
+    if args.xfeat_only:
+        dynamic_axes = {"image": {0: "batch", 2: "height", 3: "width"}}
+        torch.onnx.export(
+            xfeat.net,
+            (x1),
+            args.export_path,
+            verbose=False,
+            opset_version=args.opset,
+            do_constant_folding=True,
+            input_names=["image"],
+            output_names=["feats", "keypoints", "heatmap"],
+            dynamic_axes=dynamic_axes if args.dynamic else None,
+        )
+    else:
+        dynamic_axes = {"image0": {2: "height", 3: "width"}, "image1": {2: "height", 3: "width"}}
+        torch.onnx.export(
+            xfeat,
+            (x1, ),
+            args.export_path,
+            verbose=False,
+            opset_version=args.opset,
+            do_constant_folding=True,
+            input_names=["image0", "image1"],
+            output_names=["mkpts_0", "mkpts_1"],
+            dynamic_axes=dynamic_axes if args.dynamic else None,
+        )
 
     model_onnx = onnx.load(args.export_path)  # load onnx model
     onnx.checker.check_model(model_onnx)  # check onnx model

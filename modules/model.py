@@ -115,8 +115,17 @@ class XFeatModel(nn.Module):
 			Unfolds tensor in 2D with desired ws (window size) and concat the channels
 		"""
 		B, C, H, W = x.shape
-		x = x.unfold(2,  ws , ws).unfold(3, ws,ws)                             \
-			.reshape(B, C, H//ws, W//ws, ws**2)
+		# The current ONNX export does not support dynamic shape unfold
+		if torch.onnx.is_in_onnx_export():
+			x_bak = x.clone()
+			x = torch.reshape(x, (B, C, H//ws, ws, W)).permute(0, 1, 2, 4, 3)
+			d0, d1, d2, d3, d4 = x.shape
+			x = torch.reshape(x, (d0, d1, d2, d3//ws, ws, d4)).permute(0, 1, 2, 3, 5, 4)
+
+			# print("Validate unfold: ", torch.all(x == x_bak.unfold(2,  ws , ws).unfold(3, ws, ws)))
+		else:
+			x = x.unfold(2,  ws , ws).unfold(3, ws, ws)
+		x = x.reshape(B, C, H//ws, W//ws, ws**2)
 		return x.permute(0, 1, 4, 2, 3).reshape(B, -1, H//ws, W//ws)
 
 

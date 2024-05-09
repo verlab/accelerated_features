@@ -9,16 +9,19 @@ import onnxsim
 from modules.xfeat import XFeat
 
 
+class CustomInstanceNorm(torch.nn.Module):
+    def __init__(self, epsilon=1e-5):
+        super(CustomInstanceNorm, self).__init__()
+        self.epsilon = epsilon
+
+    def forward(self, x):
+        mean = x.mean(dim=(2, 3), keepdim=True)
+        std = x.std(dim=(2, 3), unbiased=False, keepdim=True)
+        return (x - mean) / (std + self.epsilon)
+
+
 def preprocess_tensor(self, x):
     return x, 1.0, 1.0 # Assuming the width and height are multiples of 32, bypass preprocessing.
-    """ Guarantee that image is divisible by 32 to avoid aliasing artifacts. """
-    H, W = x.shape[-2:]
-    _H, _W = (H//32) * 32, (W//32) * 32
-    rh, rw = H/_H, W/_W
-
-    x = F.interpolate(x, (_H, _W), mode='bilinear', align_corners=False)
-    return x, rh, rw
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Export XFeat/Matching model to ONNX.")
@@ -26,6 +29,11 @@ def parse_args():
         "--xfeat_only",
         action="store_true",
         help="Export only the XFeat model.",
+    )
+    parser.add_argument(
+        "--split_instance_norm",
+        action="store_true",
+        help="Whether to split InstanceNorm2d into '(x - mean) / (std + epsilon)', due to some inference libraries not supporting InstanceNorm, such as OpenVINO.",
     )
     parser.add_argument(
         "--height",
@@ -59,7 +67,7 @@ def parse_args():
     parser.add_argument(
         "--opset",
         type=int,
-        default=16,
+        default=11,
         help="ONNX opset version.",
     )
 
@@ -76,18 +84,26 @@ if __name__ == "__main__":
     if args.top_k > 4800:
         print("Warning: The current maximum supported value for TopK in TensorRT is 3840, which coincidentally equals 4800 * 0.8. Please ignore this warning if TensorRT will not be used in the future.")
 
+    batch_size = 2
+    x1 = torch.randn(batch_size, 3, args.height, args.width, dtype=torch.float32, device='cpu')
+    x2 = torch.randn(batch_size, 3, args.height, args.width, dtype=torch.float32, device='cpu')
+
     xfeat = XFeat()
     xfeat.top_k = args.top_k
-    xfeat = xfeat.cpu().eval()
-    xfeat.forward = xfeat.match_xfeat_star
-    # Bypass preprocess_tensor
-    xfeat.preprocess_tensor = types.MethodType(preprocess_tensor, xfeat)
 
-    x1 = torch.randn(1, 3, args.height, args.width, dtype=torch.float32, device='cpu')
-    x2 = torch.randn(1, 3, args.height, args.width, dtype=torch.float32, device='cpu')
+    if args.split_instance_norm:
+        xfeat.net.norm = CustomInstanceNorm()
+
+    xfeat = xfeat.cpu().eval()
+    xfeat.dev = "cpu"
+    xfeat.forward = xfeat.match_xfeat_star
+
+    if not args.dynamic:
+        # Bypass preprocess_tensor
+        xfeat.preprocess_tensor = types.MethodType(preprocess_tensor, xfeat)
 
     if args.xfeat_only:
-        dynamic_axes = {"image": {0: "batch", 2: "height", 3: "width"}}
+        dynamic_axes = {"images": {0: "batch", 2: "height", 3: "width"}}
         torch.onnx.export(
             xfeat.net,
             (x1),
@@ -95,12 +111,12 @@ if __name__ == "__main__":
             verbose=False,
             opset_version=args.opset,
             do_constant_folding=True,
-            input_names=["image"],
-            output_names=["feats", "keypoints", "heatmap"],
+            input_names=["images"],
+            output_names=["feats", "keypoints", "heatmaps"],
             dynamic_axes=dynamic_axes if args.dynamic else None,
         )
     else:
-        dynamic_axes = {"image0": {2: "height", 3: "width"}, "image1": {2: "height", 3: "width"}}
+        dynamic_axes = {"images0": {0: "batch", 2: "height", 3: "width"}, "images1": {0: "batch", 2: "height", 3: "width"}}
         torch.onnx.export(
             xfeat,
             (x1, x2),
@@ -108,8 +124,8 @@ if __name__ == "__main__":
             verbose=False,
             opset_version=args.opset,
             do_constant_folding=True,
-            input_names=["image0", "image1"],
-            output_names=["mkpts_0", "mkpts_1"],
+            input_names=["images0", "images1"],
+            output_names=["matches", "batch_indexes"],
             dynamic_axes=dynamic_axes if args.dynamic else None,
         )
 

@@ -129,9 +129,9 @@ class MatchingDemo:
     def draw_quad(self, frame, point_list):
         if len(self.corners) > 1:
             for i in range(len(self.corners) - 1):
-                cv2.line(frame, point_list[i], point_list[i + 1], self.line_color, self.line_thickness, lineType = self.line_type)
+                cv2.line(frame, tuple(point_list[i]), tuple(point_list[i + 1]), self.line_color, self.line_thickness, lineType = self.line_type)
             if len(self.corners) == 4:  # Close the quadrilateral if 4 corners are defined
-                cv2.line(frame, point_list[3], point_list[0], self.line_color, self.line_thickness, lineType = self.line_type)
+                cv2.line(frame, tuple(point_list[3]), tuple(point_list[0]), self.line_color, self.line_thickness, lineType = self.line_type)
 
     def mouse_callback(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:

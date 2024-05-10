@@ -23,12 +23,43 @@ class CustomInstanceNorm(torch.nn.Module):
 def preprocess_tensor(self, x):
     return x, 1.0, 1.0 # Assuming the width and height are multiples of 32, bypass preprocessing.
 
+def match_xfeat_star(self, mkpts0, feats0, sc0, mkpts1, feats1, sc1):
+    out1 = {
+        "keypoints": mkpts0,
+        "descriptors": feats0,
+        "scales": sc0,
+    }
+    out2 = {
+        "keypoints": mkpts1,
+        "descriptors": feats1,
+        "scales": sc1,
+    }
+
+    #Match batches of pairs
+    idx0_b, idx1_b = self.batch_match(out1['descriptors'], out2['descriptors'] )
+
+    #Refine coarse matches
+    match_mkpts, batch_index = self.refine_matches(out1, out2, idx0_b, idx1_b, fine_conf = 0.25)
+
+    return match_mkpts, batch_index
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Export XFeat/Matching model to ONNX.")
     parser.add_argument(
-        "--xfeat_only",
+        "--xfeat_only_model",
         action="store_true",
         help="Export only the XFeat model.",
+    )
+    parser.add_argument(
+        "--xfeat_only_model_dualscale",
+        action="store_true",
+        help="Export only the XFeat dualscale model.",
+    )
+    parser.add_argument(
+        "--xfeat_only_matching",
+        action="store_true",
+        help="Export only the matching.",
     )
     parser.add_argument(
         "--split_instance_norm",
@@ -96,13 +127,12 @@ if __name__ == "__main__":
 
     xfeat = xfeat.cpu().eval()
     xfeat.dev = "cpu"
-    xfeat.forward = xfeat.match_xfeat_star
 
     if not args.dynamic:
         # Bypass preprocess_tensor
         xfeat.preprocess_tensor = types.MethodType(preprocess_tensor, xfeat)
 
-    if args.xfeat_only:
+    if args.xfeat_only_model:
         dynamic_axes = {"images": {0: "batch", 2: "height", 3: "width"}}
         torch.onnx.export(
             xfeat.net,
@@ -115,7 +145,51 @@ if __name__ == "__main__":
             output_names=["feats", "keypoints", "heatmaps"],
             dynamic_axes=dynamic_axes if args.dynamic else None,
         )
+    elif args.xfeat_only_model_dualscale:
+        xfeat.forward = xfeat.detectAndComputeDense
+        dynamic_axes = {"images": {0: "batch", 2: "height", 3: "width"}}
+        torch.onnx.export(
+            xfeat,
+            (x1, args.top_k),
+            args.export_path,
+            verbose=False,
+            opset_version=args.opset,
+            do_constant_folding=True,
+            input_names=["images"],
+            output_names=["mkpts", "feats", "sc"],
+            dynamic_axes=dynamic_axes if args.dynamic else None,
+        )
+    elif args.xfeat_only_matching:
+        xfeat.forward = types.MethodType(match_xfeat_star, xfeat)
+
+        mkpts0 = torch.randn(batch_size, args.top_k, 2, dtype=torch.float32, device='cpu')
+        mkpts1 = torch.randn(batch_size, args.top_k, 2, dtype=torch.float32, device='cpu')
+        feats0 = torch.randn(batch_size, args.top_k, 64, dtype=torch.float32, device='cpu')
+        feats1 = torch.randn(batch_size, args.top_k, 64, dtype=torch.float32, device='cpu')
+        sc0 = torch.randn(batch_size, args.top_k, dtype=torch.float32, device='cpu')
+        sc1 = torch.randn(batch_size, args.top_k, dtype=torch.float32, device='cpu')
+
+        dynamic_axes = {
+            "mkpts0": {0: "batch", 1: "num_keypoints"},
+            "feats0": {0: "batch", 1: "num_keypoints", 2: "descriptor_size"},
+            "sc0": {0: "batch", 1: "num_keypoints"},
+            "mkpts1": {0: "batch", 1: "num_keypoints"},
+            "feats1": {0: "batch", 1: "num_keypoints", 2: "descriptor_size"},
+            "sc1": {0: "batch", 1: "num_keypoints"},
+        }
+        torch.onnx.export(
+            xfeat,
+            (mkpts0, feats0, sc0, mkpts1, feats1, sc1),
+            args.export_path,
+            verbose=False,
+            opset_version=args.opset,
+            do_constant_folding=True,
+            input_names=["mkpts0", "feats0", "sc0", "mkpts1", "feats1", "sc1"],
+            output_names=["matches", "batch_indexes"],
+            dynamic_axes=dynamic_axes if args.dynamic else None,
+        )
     else:
+        xfeat.forward = xfeat.match_xfeat_star
         dynamic_axes = {"images0": {0: "batch", 2: "height", 3: "width"}, "images1": {0: "batch", 2: "height", 3: "width"}}
         torch.onnx.export(
             xfeat,

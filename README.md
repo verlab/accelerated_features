@@ -151,7 +151,7 @@ If you find this code useful for your research, please cite the paper:
 
 ```bibtex
 @INPROCEEDINGS{potje2024cvpr,
-  author={Guilherme {Potje} and and Felipe {Cadar} and Andre {Araujo} and Renato {Martins} and Erickson R. {Nascimento}},
+  author={Guilherme {Potje} and Felipe {Cadar} and Andre {Araujo} and Renato {Martins} and Erickson R. {Nascimento}},
   booktitle={2024 IEEE / CVF Computer Vision and Pattern Recognition (CVPR)}, 
   title={XFeat: Accelerated Features for Lightweight Image Matching}, 
   year={2024}}

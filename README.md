@@ -57,6 +57,19 @@ XFeat extracts a keypoint heatmap $\mathbf{K}$, a compact 64-D dense descriptor 
 
 <img align="center" src="./figs/xfeat_arq.png" width=1000 />
 
+
+## Timing Analyses on CPU.
+
+We show that both detection branch & match refinement module costs are small and bring significant advantages in accuracy (please check the ablation section in the paper).
+
+<img align="center" src="./figs/timings.png" width=840 />
+
+
+Furthermore, XFeat performs effectively in both indoor and outdoor scenes, achieving an excellent compute-accuracy trade-off as demonstrated below. Note that in the paper, the teaser figure has a VGA resolution on the x-axis and 1,200 pixels on the y-axis. Below, we present an updated figure for improved clarity, maintaining the same x-y axis resolution.
+
+<img align="center" src="./figs/speed_accuracy.png" width=840 />
+
+
 ## Installation
 XFeat has minimal dependencies, only relying on torch. Also, XFeat does not need a GPU for real-time sparse inference (vanilla pytorch w/o any special optimization), unless you run it on high-res images. If you want to run the real-time matching demo, you will also need OpenCV.
 We recommend using conda, but you can use any virtualenv of your choice.
@@ -152,7 +165,7 @@ If you find this code useful for your research, please cite the paper:
 
 ```bibtex
 @INPROCEEDINGS{potje2024cvpr,
-  author={Guilherme {Potje} and and Felipe {Cadar} and Andre {Araujo} and Renato {Martins} and Erickson R. {Nascimento}},
+  author={Guilherme {Potje} and Felipe {Cadar} and Andre {Araujo} and Renato {Martins} and Erickson R. {Nascimento}},
   booktitle={2024 IEEE / CVF Computer Vision and Pattern Recognition (CVPR)}, 
   title={XFeat: Accelerated Features for Lightweight Image Matching}, 
   year={2024}}

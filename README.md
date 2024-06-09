@@ -131,6 +131,35 @@ xfeat = torch.hub.load('verlab/accelerated_features', 'XFeat', pretrained = True
 output = xfeat.detectAndCompute(torch.randn(1,3,480,640), top_k = 4096)[0]
 ```
 
+### TensorRT - Export
+Its advisible to use a  [NGC container](https://catalog.ngc.nvidia.com/containers). For example, for the NVIDIA Jetson platform refer to [L4T ML](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/l4t-ml/tags). The additional dependencies you need:
+- [TensorRT](https://github.com/NVIDIA/TensorRT) - usually availble inside the docker container
+- `onnx`
+- `onnxruntime`
+- [torch2trt](https://github.com/NVIDIA-AI-IOT/torch2trt)
+
+```
+python3 export.py --help
+
+usage: export.py [-h] [--weights WEIGHTS] [--imgsz IMGSZ IMGSZ] [--fp16_mode FP16_MODE] [--use_dynamic_axis USE_DYNAMIC_AXIS]
+                 [--onnx_opset ONNX_OPSET] [--workspace WORKSPACE]
+
+Create ONNX and TensorRT export for XFeat.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --weights WEIGHTS     Path to the weights pt file to process
+  --imgsz IMGSZ IMGSZ   Input image size
+  --fp16_mode FP16_MODE
+  --use_dynamic_axis USE_DYNAMIC_AXIS
+  --onnx_opset ONNX_OPSET
+  --workspace WORKSPACE
+```
+### TensorRT - Demo
+```
+python3 realtime_demo.py --method XFeat --use_engine True
+```
+
 ### Training
 XFeat training code will be released soon. Please stay tuned.
 

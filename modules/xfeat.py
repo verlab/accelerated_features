@@ -20,11 +20,12 @@ class XFeat(nn.Module):
 		It supports inference for both sparse and semi-dense feature extraction & matching.
 	"""
 
-	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt', top_k = 4096):
+	def __init__(self, weights = os.path.abspath(os.path.dirname(__file__)) + '/../weights/xfeat.pt', top_k = 4096, detection_threshold=0.05):
 		super().__init__()
 		self.dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 		self.net = XFeatModel().to(self.dev).eval()
 		self.top_k = top_k
+		self.detection_threshold = detection_threshold
 
 		if weights is not None:
 			if isinstance(weights, str):
@@ -36,7 +37,7 @@ class XFeat(nn.Module):
 		self.interpolator = InterpolateSparse2d('bicubic')
 
 	@torch.inference_mode()
-	def detectAndCompute(self, x, top_k = None):
+	def detectAndCompute(self, x, top_k = None, detection_threshold = None):
 		"""
 			Compute sparse keypoints & descriptors. Supports batched mode.
 
@@ -50,6 +51,7 @@ class XFeat(nn.Module):
 					'descriptors'  ->   torch.Tensor(N, 64): local features
 		"""
 		if top_k is None: top_k = self.top_k
+		if detection_threshold is None: detection_threshold = self.detection_threshold
 		x, rh1, rw1 = self.preprocess_tensor(x)
 
 		B, _, _H1, _W1 = x.shape
@@ -59,7 +61,7 @@ class XFeat(nn.Module):
 
 		#Convert logits to heatmap and extract kpts
 		K1h = self.get_kpts_heatmap(K1)
-		mkpts = self.NMS(K1h, threshold=0.05, kernel_size=5)
+		mkpts = self.NMS(K1h, threshold=detection_threshold, kernel_size=5)
 
 		#Compute reliability scores
 		_nearest = InterpolateSparse2d('nearest')

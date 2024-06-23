@@ -170,12 +170,12 @@ if __name__ == "__main__":
         sc1 = torch.randn(batch_size, args.top_k, dtype=torch.float32, device='cpu')
 
         dynamic_axes = {
-            "mkpts0": {0: "batch", 1: "num_keypoints"},
-            "feats0": {0: "batch", 1: "num_keypoints", 2: "descriptor_size"},
-            "sc0": {0: "batch", 1: "num_keypoints"},
-            "mkpts1": {0: "batch", 1: "num_keypoints"},
-            "feats1": {0: "batch", 1: "num_keypoints", 2: "descriptor_size"},
-            "sc1": {0: "batch", 1: "num_keypoints"},
+            "mkpts0": {0: "batch", 1: "num_keypoints_0"},
+            "feats0": {0: "batch", 1: "num_keypoints_0", 2: "descriptor_size"},
+            "sc0": {0: "batch", 1: "num_keypoints_0"},
+            "mkpts1": {0: "batch", 1: "num_keypoints_1"},
+            "feats1": {0: "batch", 1: "num_keypoints_1", 2: "descriptor_size"},
+            "sc1": {0: "batch", 1: "num_keypoints_1"},
         }
         torch.onnx.export(
             xfeat,

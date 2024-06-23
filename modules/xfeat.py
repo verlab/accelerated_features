@@ -320,7 +320,7 @@ class XFeat(nn.Module):
 		M1 = M1.permute(0,2,3,1).flatten(1, 2) # B, H*W, C
 		H1 = H1.permute(0,2,3,1).flatten(1) # B, H*W
 
-		_, top_k = torch.topk(H1, k = min(H1.shape[1], top_k), dim=-1)
+		_, top_k = torch.topk(H1, k = torch.min(H1.shape[1], torch.tensor(top_k)), dim=-1)
 
 		feats = torch.gather( M1, 1, top_k[...,None].expand(-1, -1, 64))
 		mkpts = torch.gather(xy1, 1, top_k[...,None].expand(-1, -1, 2))

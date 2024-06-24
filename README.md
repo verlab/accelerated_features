@@ -104,6 +104,7 @@ For your convenience, we provide ready to use notebooks for some examples.
 | Minimal example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/minimal_example.ipynb) |
 | Matching & registration example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_matching.ipynb) |
 | Torch hub example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_torch_hub.ipynb) |
+| Training example (synthetic) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/XFeat_training_example.ipynb) |
 
 
 ### Inference
@@ -132,7 +133,23 @@ output = xfeat.detectAndCompute(torch.randn(1,3,480,640), top_k = 4096)[0]
 ```
 
 ### Training
-XFeat training code will be released soon. Please stay tuned.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/XFeat_training_example.ipynb)
+
+To train XFeat as described in the paper, you will need MegaDepth & COCO_20k subset of COCO2017 dataset.
+You can obtain the full COCO2017 train data at https://cocodataset.org/.
+However, we [make available](https://drive.google.com/file/d/1ijYsPq7dtLQSl-oEsUOGH1fAy21YLc7H/view?usp=drive_link) a subset of COCO for convenience. We simply selected a subset of 20k images according to image resolution. Please check COCO [terms of use](https://cocodataset.org/#termsofuse) before using the data.
+
+To reproduce the training setup from the paper, please follow the steps:
+1. Download [COCO_20k](https://drive.google.com/file/d/1ijYsPq7dtLQSl-oEsUOGH1fAy21YLc7H/view?usp=drive_link) containing a subset of COCO2017;
+2. Download MegaDepth dataset. You can follow [LoFTR instructions](https://github.com/zju3dv/LoFTR/blob/master/docs/TRAINING.md#download-datasets), we use the same standard as LoFTR. Then put the megadepth indices inside the MegaDepth root folder following the standard below:
+```bash
+{megadepth_root_path}/train_data/megadepth_indices #indices
+{megadepth_root_path}/MegaDepth_v1 #images & depth maps & poses
+```
+3. Finally you can call training
+```bash
+python3 -m modules.training.train --training_type xfeat_default  --megadepth_root_path <path_to>/MegaDepth --synthetic_root_path <path_to>/coco_20k --ckpt_save_path /path/to/ckpts
+```
 
 ### Evaluation
 XFeat evaluation code will be released soon, alongside the training scripts. Please stay tuned.

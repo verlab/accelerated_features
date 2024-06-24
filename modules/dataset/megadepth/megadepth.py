@@ -17,60 +17,6 @@ import numpy.random as rnd
 
 import pdb, tqdm, os
 
-# class MegaDepthPair:
-#     def __init__(self, reload_step = 4, size = 8_000, bs = 4):
-#         self.reload_step = reload_step
-#         self.size = size
-#         self.bs = bs
-
-#         TRAIN_BASE_PATH = "/homeLocal/guipotje/Data/MegaDepth/train_data/megadepth_indices"
-#         TRAINVAL_DATA_SOURCE = "/homeLocal/guipotje/Data/MegaDepth/MegaDepth_v1"
-#         TRAIN_NPZ_ROOT = f"{TRAIN_BASE_PATH}/scene_info_0.1_0.7"
-
-#         #Grab all datasets and join them by ID
-#         npz_paths = glob.glob(TRAIN_NPZ_ROOT + '/*.npz')[:]
-#         data = {}
-#         for path in tqdm.tqdm(npz_paths):
-#             scene_id = os.path.basename(path).split('_')[0]
-#             if scene_id in data:
-#                 data[scene_id].append(MegaDepthDataset(root_dir = TRAINVAL_DATA_SOURCE,  npz_path = path, load_depth=False,
-#                                                         min_overlap_score=0.0, max_overlap_score=0.35 ))
-#             else:
-#                 data[scene_id] = [MegaDepthDataset(root_dir = TRAINVAL_DATA_SOURCE,  npz_path = path, load_depth=False, 
-#                                     min_overlap_score=0.0, max_overlap_score=0.35)]
-
-#         self.data = [[_v for _v in v if len(_v) > 0] for v in data.values()]
-
-#         self.chunksz = self.size // len(self.data)
-
-#         self.cnt = 0
-#         self.cache = None
-
-#     def get_batch(self):
-
-#         if self.cnt % ( self.size * self.reload_step ) == 0: # Update cache every x steps
-#             self.cache = []
-#             for d in tqdm.tqdm(self.data):
-#                 curr_dataset = []
-#                 for i in range(self.chunksz):
-#                     d_idx = rnd.randint(len(d))
-#                     pair = d[d_idx][rnd.randint(len(d[d_idx]))]
-#                     curr_dataset.append([(pair['image0'].numpy()*255).astype(np.uint8),
-#                                        (pair['image1'].numpy()*255).astype(np.uint8)])
-#                 self.cache.append(curr_dataset)
-#             #pdb.set_trace()
-#             self.cache = np.array(self.cache)
-
-#         #Sample batch
-#         idxs_batch = rnd.choice (self.cache.shape[0], size=(self.bs,), replace = False)
-#         idxs_imgs =  rnd.randint(self.cache.shape[1], size=(self.bs,))
-#         self.cnt+=self.bs
-
-#         #print(idxs_batch)
-#         #print(idxs_imgs)
-
-#         return self.cache[idxs_batch, idxs_imgs, ...]
-
 
 class MegaDepthDataset(Dataset):
     def __init__(self,

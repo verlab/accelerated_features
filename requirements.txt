@@ -1,4 +1,4 @@
-opencv-contrib-python-headless
-kornia
+opencv-contrib-python-headless==4.10.0.84
+kornia==0.6.12
 tqdm
 

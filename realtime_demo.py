@@ -78,7 +78,7 @@ class MatchingDemo:
         self.height = args.height
         self.ref_frame = None
         self.ref_precomp = [[],[]]
-        self.corners = [[50, 50], [640-50, 50], [640-50, 480-50], [50, 480-50]]
+        self.corners = [[50, 50], [self.width-50, 50], [self.width-50, self.height-50], [50, self.height-50]]
         self.current_frame = None
         self.H = None
         self.setup_camera()
@@ -157,7 +157,7 @@ class MatchingDemo:
         return warped_points
 
     def create_top_frame(self):
-        top_frame_canvas = np.zeros((480, 1280, 3), dtype=np.uint8)
+        top_frame_canvas = np.zeros((self.height, self.width*2, 3), dtype=np.uint8)
         top_frame = np.hstack((self.ref_frame, self.current_frame))
         color = (3, 186, 252)
         cv2.rectangle(top_frame, (2, 2), (self.width*2-2, self.height-2), color, 5)  # Orange color line as a separator

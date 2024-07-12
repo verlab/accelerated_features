@@ -52,6 +52,11 @@ def parse_args():
         help="Export only the XFeat model.",
     )
     parser.add_argument(
+        "--xfeat_only_model_detectAndCompute",
+        action="store_true",
+        help="Export the XFeat detectAndCompute model.",
+    )
+    parser.add_argument(
         "--xfeat_only_model_dualscale",
         action="store_true",
         help="Export only the XFeat dualscale model.",
@@ -143,6 +148,23 @@ if __name__ == "__main__":
             do_constant_folding=True,
             input_names=["images"],
             output_names=["feats", "keypoints", "heatmaps"],
+            dynamic_axes=dynamic_axes if args.dynamic else None,
+        )
+    if args.xfeat_only_model_detectAndCompute:
+        print("Warning: Exporting the detectAndCompute ONNX model only supports a batch size of 1.")
+        batch_size = 1
+        xfeat.forward = xfeat.detectAndCompute
+        x1 = torch.randn(batch_size, 3, args.height, args.width, dtype=torch.float32, device='cpu')
+        dynamic_axes = {"images": {2: "height", 3: "width"}}
+        torch.onnx.export(
+            xfeat,
+            (x1, args.top_k),
+            args.export_path,
+            verbose=False,
+            opset_version=args.opset,
+            do_constant_folding=True,
+            input_names=["images", "top_k"],
+            output_names=["keypoints", "scores", "descriptors"],
             dynamic_axes=dynamic_axes if args.dynamic else None,
         )
     elif args.xfeat_only_model_dualscale:

@@ -64,7 +64,7 @@ class XFeat(nn.Module):
 		#Compute reliability scores
 		_nearest = InterpolateSparse2d('nearest')
 		_bilinear = InterpolateSparse2d('bilinear')
-		scores = (_nearest(K1h, mkpts, _H1, _W1) * _bilinear(H1, mkpts, _H1, _W1)).squeeze(-1)
+		scores = (_nearest(K1h, mkpts, _H1, _W1) * _bilinear(H1, mkpts, _H1, _W1))[..., 0]
 		scores[torch.all(mkpts == 0, dim=-1)] = -1
 
 		#Select top-k features
@@ -75,10 +75,21 @@ class XFeat(nn.Module):
 		scores = torch.gather(scores, -1, idxs)[:, :top_k]
 
 		#Interpolate descriptors at kpts positions
+		if torch.onnx.is_in_onnx_export() and torch.onnx._globals.GLOBALS.export_onnx_opset_version < 16:
+			# The bicubic grid_sample is currently not implemented. 
+			# When the opset is less than 16, bilinear_grid_sample will be used as a replacement, which may introduce accuracy errors.
+			self.interpolator = InterpolateSparse2d('bilinear')
 		feats = self.interpolator(M1, mkpts, H = _H1, W = _W1)
 
 		#L2-Normalize
 		feats = F.normalize(feats, dim=-1)
+
+		if torch.onnx.is_in_onnx_export():
+			# Avoid warning of torch.tensor being treated as a constant when exporting to ONNX
+			mkpts[..., 0] = mkpts[..., 0] * rw1
+			mkpts[..., 1] = mkpts[..., 1] * rh1
+
+			return [{'keypoints': mkpts, 'scores': scores, 'descriptors': feats}]
 
 		#Correct kpt scale
 		mkpts = mkpts * torch.tensor([rw1,rh1], device=mkpts.device).view(1, 1, -1)
@@ -200,6 +211,10 @@ class XFeat(nn.Module):
 		pad=kernel_size//2
 		local_max = nn.MaxPool2d(kernel_size=kernel_size, stride=1, padding=pad)(x)
 		pos = (x == local_max) & (x > threshold)
+		if torch.onnx.is_in_onnx_export():
+			if B != 1:
+				raise ValueError('Error: NMS does not support batched mode in ONNX export.')
+			return pos.nonzero()[None, ..., 2:].flip(-1)
 		pos_batched = [k.nonzero()[..., 1:].flip(-1) for k in pos]
 
 		pad_val = max([len(x) for x in pos_batched])

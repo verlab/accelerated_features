@@ -184,8 +184,8 @@ Please follow the example to test on your own images:  [![Open In Colab](https:/
 Metrics (AUC @ 5 / 10 / 20)
 | Setup           | Max Dimension | Keypoints | XFeat + LighterGlue           | SuperPoint + LightGlue (Official) |
 |-----------------|---------------|-----------|-------------------------------|-----------------------------------|
-| **Fast Setup**  | 640           | 1300      | 0.4441 / 0.6108 / 0.746       | 0.4694 / 0.6333 / 0.7621          |
-| **Accurate Setup** | 1024          | 4096      | 0.5645 / 0.7102 / 0.8199       | 0.5914 / 0.7385 / 0.841            |
+| **Fast Setup**  | 640           | 1300      | 0.444 / 0.610 / 0.746       | 0.469 / 0.633 / 0.762          |
+| **Accurate Setup** | 1024          | 4096      | 0.564 / 0.710 / 0.819       | 0.591 / 0.738 / 0.841            |
 
 ## Contributing
 Contributions to XFeat are welcome! 

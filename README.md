@@ -107,6 +107,7 @@ For your convenience, we provide ready to use notebooks for some examples.
 | Matching & registration example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_matching.ipynb) |
 | Torch hub example | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_torch_hub.ipynb) |
 | Training example (synthetic) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/XFeat_training_example.ipynb) |
+| XFeat + LightGlue | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat%2Blg_torch_hub.ipynb) |
 
 
 ### Inference
@@ -174,6 +175,17 @@ Or test with SIFT or ORB:
 python3 realtime_demo.py --method SIFT
 python3 realtime_demo.py --method ORB
 ```
+
+## XFeat + LightGlue 
+We have trained a lighter version of LightGlue (LighterGlue). It has fewer parameters and is approximately three times faster than the original LightGlue. Special thanks to the developers of the [GlueFactory](https://github.com/cvg/glue-factory) library, which enabled us to train this version of LightGlue with XFeat.
+Below, we compare the original SP + LG using the [GlueFactory](https://github.com/cvg/glue-factory) evaluation script on MegaDepth-1500.
+Please follow the example to test on your own images:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat%2Blg_torch_hub.ipynb)
+
+Metrics (AUC @ 5 / 10 / 20)
+| Setup           | Max Dimension | Keypoints | XFeat + LighterGlue           | SuperPoint + LightGlue (Official) |
+|-----------------|---------------|-----------|-------------------------------|-----------------------------------|
+| **Fast Setup**  | 640           | 1300      | 0.4441 / 0.6108 / 0.746       | 0.4694 / 0.6333 / 0.7621          |
+| **Accurate Setup** | 1024          | 4096      | 0.5645 / 0.7102 / 0.8199       | 0.5914 / 0.7385 / 0.841            |
 
 ## Contributing
 Contributions to XFeat are welcome! 

@@ -7,7 +7,8 @@
 
 ### [[ArXiv]](https://arxiv.org/abs/2404.19174) | [[Project Page]](https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/) |  [[CVPR'24 Paper]](https://openaccess.thecvf.com/content/CVPR2024/html/Potje_XFeat_Accelerated_Features_for_Lightweight_Image_Matching_CVPR_2024_paper.html)
 
-- Training code is now available -> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/XFeat_training_example.ipynb) 
+- Training code is now available -> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/XFeat_training_example.ipynb)
+- 🎉 **New!** XFeat + LighterGlue (smaller version of LightGlue) available! 🚀 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat%2Blg_torch_hub.ipynb)
 
 <div align="center" style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
   <div style="display: flex; justify-content: space-around; width: 100%;">
@@ -31,6 +32,7 @@ Just wanna quickly try on your images? Check this out: [![Open In Colab](https:/
   - [Training](#training)
   - [Evaluation](#evaluation)
 - [Real-time demo app](#real-time-demo)
+- [XFeat+LightGlue](#xfeat-with-lightglue)
 - [Contribute](#contributing)
 - [Citation](#citation)
 - [License](#license)
@@ -176,7 +178,7 @@ python3 realtime_demo.py --method SIFT
 python3 realtime_demo.py --method ORB
 ```
 
-## XFeat + LightGlue 
+## XFeat with LightGlue
 We have trained a lighter version of LightGlue (LighterGlue). It has fewer parameters and is approximately three times faster than the original LightGlue. Special thanks to the developers of the [GlueFactory](https://github.com/cvg/glue-factory) library, which enabled us to train this version of LightGlue with XFeat.
 Below, we compare the original SP + LG using the [GlueFactory](https://github.com/cvg/glue-factory) evaluation script on MegaDepth-1500.
 Please follow the example to test on your own images:  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat%2Blg_torch_hub.ipynb)
@@ -184,12 +186,12 @@ Please follow the example to test on your own images:  [![Open In Colab](https:/
 Metrics (AUC @ 5 / 10 / 20)
 | Setup           | Max Dimension | Keypoints | XFeat + LighterGlue           | SuperPoint + LightGlue (Official) |
 |-----------------|---------------|-----------|-------------------------------|-----------------------------------|
-| **Fast Setup**  | 640           | 1300      | 0.444 / 0.610 / 0.746       | 0.469 / 0.633 / 0.762          |
-| **Accurate Setup** | 1024          | 4096      | 0.564 / 0.710 / 0.819       | 0.591 / 0.738 / 0.841            |
+| **Fast**  | 640           | 1300      | 0.444 / 0.610 / 0.746       | 0.469 / 0.633 / 0.762          |
+| **Accurate** | 1024          | 4096      | 0.564 / 0.710 / 0.819       | 0.591 / 0.738 / 0.841            |
 
 ## Contributing
 Contributions to XFeat are welcome! 
-Currently, it would be nice to have an export script to efficient deployment engines such as TensorRT and ONNX. Also, it would be cool to train a lightweight learned matcher on top of XFeat local features.
+Currently, it would be nice to have an export script to efficient deployment engines such as TensorRT and ONNX. Also, it would be cool to train other lightweight learned matchers on top of XFeat local features.
 
 ## Citation
 If you find this code useful for your research, please cite the paper:

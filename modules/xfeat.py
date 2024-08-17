@@ -68,11 +68,11 @@ class XFeat(nn.Module):
 		scores[torch.all(mkpts == 0, dim=-1)] = -1
 
 		#Select top-k features
-		idxs = torch.argsort(-scores)
-		mkpts_x  = torch.gather(mkpts[...,0], -1, idxs)[:, :top_k]
-		mkpts_y  = torch.gather(mkpts[...,1], -1, idxs)[:, :top_k]
+		idxs = torch.topk(scores, top_k, dim=-1)[1]
+		mkpts_x  = torch.gather(mkpts[...,0], -1, idxs)
+		mkpts_y  = torch.gather(mkpts[...,1], -1, idxs)
 		mkpts = torch.cat([mkpts_x[...,None], mkpts_y[...,None]], dim=-1)
-		scores = torch.gather(scores, -1, idxs)[:, :top_k]
+		scores = torch.gather(scores, -1, idxs)
 
 		#Interpolate descriptors at kpts positions
 		if torch.onnx.is_in_onnx_export() and torch.onnx._globals.GLOBALS.export_onnx_opset_version < 16:

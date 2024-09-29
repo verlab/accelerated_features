@@ -217,8 +217,18 @@ class XFeat(nn.Module):
 
 	def preprocess_tensor(self, x):
 		""" Guarantee that image is divisible by 32 to avoid aliasing artifacts. """
-		if isinstance(x, np.ndarray) and len(x.shape) == 3:
-			x = torch.tensor(x).permute(2,0,1)[None]
+		if isinstance(x, np.ndarray):
+			if len(x.shape) == 3:
+				x = torch.tensor(x).permute(2,0,1)[None]
+			elif len(x.shape) == 2:
+				x = torch.tensor(x[..., None]).permute(2,0,1)[None]
+			else:
+				raise RuntimeError('For numpy arrays, only (H,W) or (H,W,C) format is supported.')
+		
+		
+		if len(x.shape) != 4:
+			raise RuntimeError('Input tensor needs to be in (B,C,H,W) format')
+	
 		x = x.to(self.dev).float()
 
 		H, W = x.shape[-2:]

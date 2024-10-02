@@ -50,7 +50,7 @@ class LighterGlue(nn.Module):
 
     @torch.inference_mode()
     def forward(self, data, min_conf = 0.1):
-        self.net.conf.filter_threshold = conf
+        self.net.conf.filter_threshold = min_conf
         result = self.net( {   'image0': {'keypoints': data['keypoints0'], 'descriptors': data['descriptors0'], 'image_size': data['image_size0']},
                                'image1': {'keypoints': data['keypoints1'], 'descriptors': data['descriptors1'], 'image_size': data['image_size1']}  
                            } )

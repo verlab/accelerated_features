@@ -129,7 +129,7 @@ class XFeat(nn.Module):
 
 
 	@torch.inference_mode()
-	def match_lighterglue(self, d0, d1):
+	def match_lighterglue(self, d0, d1, min_conf = 0.1):
 		"""
 			Match XFeat sparse features with LightGlue (smaller version) -- currently does NOT support batched inference because of padding, but its possible to implement easily.
 			input:
@@ -154,7 +154,7 @@ class XFeat(nn.Module):
 		}
 
 		#Dict -> log_assignment: [B x M+1 x N+1] matches0: [B x M] matching_scores0: [B x M] matches1: [B x N] matching_scores1: [B x N] matches: List[[Si x 2]], scores: List[[Si]]
-		out = self.lighterglue(data)
+		out = self.lighterglue(data, min_conf = min_conf)
 
 		idxs = out['matches'][0]
 

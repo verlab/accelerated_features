@@ -136,6 +136,7 @@ class XFeat(nn.Module):
 				d0, d1: Dict('keypoints', 'scores, 'descriptors', 'image_size (Width, Height)')
 			output:
 				mkpts_0, mkpts_1 -> np.ndarray (N,2) xy coordinate matches from image1 to image2
+                                idx              -> np.ndarray (N,2) the indices of the matching features
 				
 		"""
 		if not self.kornia_available:
@@ -158,7 +159,7 @@ class XFeat(nn.Module):
 
 		idxs = out['matches'][0]
 
-		return d0['keypoints'][idxs[:, 0]].cpu().numpy(), d1['keypoints'][idxs[:, 1]].cpu().numpy()
+		return d0['keypoints'][idxs[:, 0]].cpu().numpy(), d1['keypoints'][idxs[:, 1]].cpu().numpy(), out['matches'][0].cpu().numpy()
 
 
 	@torch.inference_mode()

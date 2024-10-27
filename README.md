@@ -157,7 +157,33 @@ python3 -m modules.training.train --training_type xfeat_default  --megadepth_roo
 ```
 
 ### Evaluation
-XFeat evaluation code will be released soon, alongside the training scripts. Please stay tuned.
+----
+**MegaDepth-1500**
+
+Please note that due to the stochastic nature of RANSAC and major code refactoring, you may observe slightly different AuC results; however, they should be very close to those reported in the paper.
+
+To evaluate on the MegaDepth dataset, you need to first get the dataset:
+```bash
+python3 -m modules.dataset.download --megadepth-1500 --download_dir </path/to/desired/folder>
+```
+Then, you call the mega1500 eval script, you can choose between `xfeat, xfeat-star and alike`. It should take about a minute to run the benchmark:
+```bash
+python3 -m modules.eval.megadepth1500 --dataset-dir </data/Mega1500> --matcher xfeat --ransac-thr 2.5
+```
+---
+**ScanNet-1500**
+
+To evaluate on the ScanNet eval dataset, you need to first get the dataset:
+```bash
+python3 -m modules.dataset.download --scannet-1500 --download_dir </path/to/desired/folder>
+```
+
+Then, you can call the scannet1500 eval script, it should take a couple of minutes:
+```bash
+python3 -m modules.eval.scannet1500 --scannet_path </data/ScanNet1500> --output </data/ScanNet1500/output> && python3 -m modules.eval.scannet1500 --scannet_path </data/ScanNet1500> --output </data/ScanNet1500/output> --show
+```
+
+---
 
 ## Real-time Demo
 To demonstrate the capabilities of XFeat, we provide a real-time matching demo with Homography registration. Currently, you can experiment with XFeat, ORB and SIFT. You will need a working webcam. To run the demo and show the possible input flags, please run:

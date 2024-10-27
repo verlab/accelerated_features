@@ -2,6 +2,9 @@
 	"XFeat: Accelerated Features for Lightweight Image Matching, CVPR 2024."
 	https://www.verlab.dcc.ufmg.br/descriptors/xfeat_cvpr24/
 
+    Camera pose metrics adapted from LoFTR https://github.com/zju3dv/LoFTR/blob/master/src/utils/metrics.py
+    The main difference is the use of poselib instead of OpenCV's vanilla RANSAC for E_mat, which is more stable and MUCH and faster.
+
 """
 
 import argparse

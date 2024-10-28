@@ -76,21 +76,32 @@ class XFeat(nn.Module):
 		#Compute reliability scores
 		_nearest = InterpolateSparse2d('nearest')
 		_bilinear = InterpolateSparse2d('bilinear')
-		scores = (_nearest(K1h, mkpts, _H1, _W1) * _bilinear(H1, mkpts, _H1, _W1)).squeeze(-1)
+		scores = (_nearest(K1h, mkpts, _H1, _W1) * _bilinear(H1, mkpts, _H1, _W1))[..., 0]
 		scores[torch.all(mkpts == 0, dim=-1)] = -1
 
 		#Select top-k features
-		idxs = torch.argsort(-scores)
-		mkpts_x  = torch.gather(mkpts[...,0], -1, idxs)[:, :top_k]
-		mkpts_y  = torch.gather(mkpts[...,1], -1, idxs)[:, :top_k]
+		idxs = torch.topk(scores, top_k, dim=-1)[1]
+		mkpts_x  = torch.gather(mkpts[...,0], -1, idxs)
+		mkpts_y  = torch.gather(mkpts[...,1], -1, idxs)
 		mkpts = torch.cat([mkpts_x[...,None], mkpts_y[...,None]], dim=-1)
-		scores = torch.gather(scores, -1, idxs)[:, :top_k]
+		scores = torch.gather(scores, -1, idxs)
 
 		#Interpolate descriptors at kpts positions
+		if torch.onnx.is_in_onnx_export() and torch.onnx._globals.GLOBALS.export_onnx_opset_version < 16:
+			# The bicubic grid_sample is currently not implemented. 
+			# When the opset is less than 16, bilinear_grid_sample will be used as a replacement, which may introduce accuracy errors.
+			self.interpolator = InterpolateSparse2d('bilinear')
 		feats = self.interpolator(M1, mkpts, H = _H1, W = _W1)
 
 		#L2-Normalize
 		feats = F.normalize(feats, dim=-1)
+
+		if torch.onnx.is_in_onnx_export():
+			# Avoid warning of torch.tensor being treated as a constant when exporting to ONNX
+			mkpts[..., 0] = mkpts[..., 0] * rw1
+			mkpts[..., 1] = mkpts[..., 1] * rh1
+
+			return [{'keypoints': mkpts, 'scores': scores, 'descriptors': feats}]
 
 		#Correct kpt scale
 		mkpts = mkpts * torch.tensor([rw1,rh1], device=mkpts.device).view(1, 1, -1)
@@ -183,6 +194,8 @@ class XFeat(nn.Module):
 
 		idxs0, idxs1 = self.match(out1['descriptors'], out2['descriptors'], min_cossim=min_cossim )
 
+		if torch.onnx.is_in_onnx_export():
+			return out1['keypoints'][idxs0], out2['keypoints'][idxs1]
 		return out1['keypoints'][idxs0].cpu().numpy(), out2['keypoints'][idxs1].cpu().numpy()
 
 	@torch.inference_mode()
@@ -205,14 +218,18 @@ class XFeat(nn.Module):
 		out2 = self.detectAndComputeDense(im_set2, top_k=top_k)
 
 		#Match batches of pairs
-		idxs_list = self.batch_match(out1['descriptors'], out2['descriptors'] )
-		B = len(im_set1)
+		idx0_b, idx1_b = self.batch_match(out1['descriptors'], out2['descriptors'] )
 
 		#Refine coarse matches
-		#this part is harder to batch, currently iterate
+		match_mkpts, batch_index = self.refine_matches(out1, out2, idx0_b, idx1_b, fine_conf = 0.25)
+
+		if torch.onnx.is_in_onnx_export():
+			return match_mkpts, batch_index
+
+		B = im_set1.shape[0]
 		matches = []
 		for b in range(B):
-			matches.append(self.refine_matches(out1, out2, matches = idxs_list, batch_idx=b))
+			matches.append(match_mkpts[batch_index == b, :])
 
 		return matches if B > 1 else (matches[0][:, :2].cpu().numpy(), matches[0][:, 2:].cpu().numpy())
 
@@ -251,6 +268,10 @@ class XFeat(nn.Module):
 		pad=kernel_size//2
 		local_max = nn.MaxPool2d(kernel_size=kernel_size, stride=1, padding=pad)(x)
 		pos = (x == local_max) & (x > threshold)
+		if torch.onnx.is_in_onnx_export():
+			if B != 1:
+				raise ValueError('Error: NMS does not support batched mode in ONNX export.')
+			return pos.nonzero()[None, ..., 2:].flip(-1)
 		pos_batched = [k.nonzero()[..., 1:].flip(-1) for k in pos]
 
 		pad_val = max([len(x) for x in pos_batched])
@@ -264,35 +285,28 @@ class XFeat(nn.Module):
 
 	@torch.inference_mode()
 	def batch_match(self, feats1, feats2, min_cossim = -1):
-		B = len(feats1)
 		cossim = torch.bmm(feats1, feats2.permute(0,2,1))
 		match12 = torch.argmax(cossim, dim=-1)
 		match21 = torch.argmax(cossim.permute(0,2,1), dim=-1)
 
-		idx0 = torch.arange(len(match12[0]), device=match12.device)
+		indices = torch.arange(match12.shape[1], device=feats1.device).unsqueeze(0).repeat(match12.shape[0], 1)
 
-		batched_matches = []
+		mutual = (match21.gather(1, match12) == indices)
 
-		for b in range(B):
-			mutual = match21[b][match12[b]] == idx0
+		if min_cossim > 0:
+			cossim_max, _ = cossim.max(dim=2)
+			good = cossim_max > min_cossim
+			mutual = mutual & good
 
-			if min_cossim > 0:
-				cossim_max, _ = cossim[b].max(dim=1)
-				good = cossim_max > min_cossim
-				idx0_b = idx0[mutual & good]
-				idx1_b = match12[b][mutual & good]
-			else:
-				idx0_b = idx0[mutual]
-				idx1_b = match12[b][mutual]
+		idx0_b = torch.cat([mutual.nonzero()[:, 0, None], indices[mutual][:, None]], axis=1)
+		idx1_b = torch.cat([mutual.nonzero()[:, 0, None], match12[mutual][:, None]], axis=1)
 
-			batched_matches.append((idx0_b, idx1_b))
-
-		return batched_matches
+		return idx0_b, idx1_b
 
 	def subpix_softmax2d(self, heatmaps, temp = 3):
 		N, H, W = heatmaps.shape
 		heatmaps = torch.softmax(temp * heatmaps.view(-1, H*W), -1).view(-1, H, W)
-		x, y = torch.meshgrid(torch.arange(W, device =  heatmaps.device ), torch.arange(H, device =  heatmaps.device ), indexing = 'xy')
+		x, y = torch.meshgrid(torch.arange(H, device =  heatmaps.device ), torch.arange(W, device =  heatmaps.device ), indexing = 'ij')
 		x = x - (W//2)
 		y = y - (H//2)
 
@@ -303,13 +317,20 @@ class XFeat(nn.Module):
 
 		return coords
 
-	def refine_matches(self, d0, d1, matches, batch_idx, fine_conf = 0.25):
-		idx0, idx1 = matches[batch_idx]
-		feats1 = d0['descriptors'][batch_idx][idx0]
-		feats2 = d1['descriptors'][batch_idx][idx1]
-		mkpts_0 = d0['keypoints'][batch_idx][idx0]
-		mkpts_1 = d1['keypoints'][batch_idx][idx1]
-		sc0 = d0['scales'][batch_idx][idx0]
+	def refine_matches(self, d0, d1, idx0_b, idx1_b, fine_conf = 0.25):
+		if torch.onnx.is_in_onnx_export():
+			# Improve compatibility when opset is less than 14
+			feats1 = d0['descriptors'].flatten(0, 1)[idx0_b[:, 0] * d0['descriptors'].shape[1] + idx0_b[:, 1]]
+			feats2 = d1['descriptors'].flatten(0, 1)[idx1_b[:, 0] * d1['descriptors'].shape[1] + idx1_b[:, 1]]
+			mkpts_0 = d0['keypoints'].flatten(0, 1)[idx0_b[:, 0] * d0['keypoints'].shape[1] + idx0_b[:, 1]]
+			mkpts_1 = d1['keypoints'].flatten(0, 1)[idx1_b[:, 0] * d1['keypoints'].shape[1] + idx1_b[:, 1]]
+			sc0 = d0['scales'].flatten(0, 1)[idx0_b[:, 0] * d0['scales'].shape[1] + idx0_b[:, 1]]
+		else:
+			feats1 = d0['descriptors'][idx0_b[:, 0], idx0_b[:, 1]]
+			feats2 = d1['descriptors'][idx1_b[:, 0], idx1_b[:, 1]]
+			mkpts_0 = d0['keypoints'][idx0_b[:, 0], idx0_b[:, 1]]
+			mkpts_1 = d1['keypoints'][idx1_b[:, 0], idx1_b[:, 1]]
+			sc0 = d0['scales'][idx0_b[:, 0], idx0_b[:, 1]]
 
 		#Compute fine offsets
 		offsets = self.net.fine_matcher(torch.cat([feats1, feats2],dim=-1))
@@ -322,7 +343,10 @@ class XFeat(nn.Module):
 		mkpts_0 = mkpts_0[mask_good]
 		mkpts_1 = mkpts_1[mask_good]
 
-		return torch.cat([mkpts_0, mkpts_1], dim=-1)
+		match_mkpts = torch.cat([mkpts_0, mkpts_1], dim=-1)
+		batch_index = idx0_b[mask_good, 0]
+
+		return match_mkpts, batch_index
 
 	@torch.inference_mode()
 	def match(self, feats1, feats2, min_cossim = 0.82):
@@ -365,14 +389,19 @@ class XFeat(nn.Module):
 		
 		xy1 = (self.create_xy(_H1, _W1, M1.device) * 8).expand(B,-1,-1)
 
-		M1 = M1.permute(0,2,3,1).reshape(B, -1, C)
-		H1 = H1.permute(0,2,3,1).reshape(B, -1)
+		M1 = M1.permute(0,2,3,1).flatten(1, 2) # B, H*W, C
+		H1 = H1.permute(0,2,3,1).flatten(1) # B, H*W
 
-		_, top_k = torch.topk(H1, k = min(len(H1[0]), top_k), dim=-1)
+		_, top_k = torch.topk(H1, k = torch.min(H1.shape[1], torch.tensor(top_k)), dim=-1)
 
 		feats = torch.gather( M1, 1, top_k[...,None].expand(-1, -1, 64))
 		mkpts = torch.gather(xy1, 1, top_k[...,None].expand(-1, -1, 2))
-		mkpts = mkpts * torch.tensor([rw1, rh1], device=mkpts.device).view(1,-1)
+		if torch.onnx.is_in_onnx_export():
+			# Avoid warning of torch.tensor being treated as a constant when exporting to ONNX
+			mkpts[..., 0] = mkpts[..., 0] * rw1
+			mkpts[..., 1] = mkpts[..., 1] * rh1
+		else:
+			mkpts = mkpts * torch.tensor([rw1, rh1], device=mkpts.device).view(1,-1)
 
 		return mkpts, feats
 

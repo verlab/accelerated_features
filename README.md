@@ -20,7 +20,7 @@
   
 </div>
 
-**TL;DR**: Really fast learned keypoint detector and descriptor. Supports sparse and semi-dense matching.
+**TL;DR**: XFeat is a really fast learned keypoint detector and descriptor. It supports sparse and semi-dense matching.
 
 Just wanna quickly try on your images? Check this out: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/verlab/accelerated_features/blob/main/notebooks/xfeat_torch_hub.ipynb) [![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm-dark.svg)](https://huggingface.co/spaces/qubvel-hf/xfeat)
 
@@ -41,11 +41,11 @@ Just wanna quickly try on your images? Check this out: [![Open In Colab](https:/
 ## Introduction
 This repository contains the official implementation of the paper: *[XFeat: Accelerated Features for Lightweight Image Matching](https://arxiv.org/abs/2404.19174)*, to be presented at CVPR 2024.
 
-**Motivation.** Why another keypoint detector and descriptor among dozens of existing ones? We noticed that the current trend in the literature focuses on accuracy but often neglects compute efficiency, especially when deploying these solutions in the real-world. For applications in mobile robotics and augmented reality, it is critical that models can run on hardware-constrained computers. To this end, XFeat was designed as an agnostic solution focusing on both accuracy and efficiency in an image matching pipeline.
+**Motivation.** Why another keypoint detector and descriptor among dozens of existing ones? We noticed that the current trend in the literature focuses on accuracy but often neglects compute efficiency, especially when deploying these solutions in the real-world. For applications in mobile robotics and augmented reality, it is critical that models can run on hardware-constrained computers. To this end, XFeat was designed as an agnostic solution focused on both accuracy and efficiency in an image matching pipeline.
 
 **Capabilities.**
 - Real-time sparse inference on CPU for VGA images (tested on laptop with an i5 CPU and vanilla pytorch);
-- Simple architecture components which facilitates deployment on embedded devices (jetson, raspberry pi, custom AI chips, etc..);
+- Simple architecture components that facilitates deployment on embedded devices (jetson, raspberry pi, custom AI chips, etc..);
 - Supports both sparse and semi-dense matching of local features;
 - Compact descriptors (64D);
 - Performance comparable to known deep local features such as SuperPoint while being significantly faster and more lightweight. Also, XFeat exhibits much better robustness to viewpoint and illumination changes than classic local features as ORB and SIFT;
@@ -56,7 +56,7 @@ This repository contains the official implementation of the paper: *[XFeat: Acce
 
 **Paper Abstract.** We introduce a lightweight and accurate architecture for resource-efficient visual correspondence. Our method, dubbed XFeat (Accelerated Features), revisits fundamental design choices in convolutional neural networks for detecting, extracting, and matching local features. Our new model satisfies a critical need for fast and robust algorithms suitable to resource-limited devices. In particular, accurate image matching requires sufficiently large image resolutions -- for this reason, we keep the resolution as large as possible while limiting the number of channels in the network. Besides, our model is designed to offer the choice of matching at the sparse or semi-dense levels, each of which may be more suitable for different downstream applications, such as visual navigation and augmented reality. Our model is the first to offer semi-dense matching efficiently, leveraging a novel match refinement module that relies on coarse local descriptors. XFeat is versatile and hardware-independent, surpassing current deep learning-based local features in speed (up to 5x faster) with comparable or better accuracy, proven in pose estimation and visual localization. We showcase it running in real-time on an inexpensive laptop CPU without specialized hardware optimizations.
 
-**Overview of XFeat's achitecture.**
+**Overview of XFeat's architecture.**
 XFeat extracts a keypoint heatmap $\mathbf{K}$, a compact 64-D dense descriptor map $\mathbf{F}$, and a reliability heatmap $\mathbf{R}$. It achieves unparalleled speed via early downsampling and shallow convolutions, followed by deeper convolutions in later encoders for robustness. Contrary to typical methods, it separates keypoint detection into a distinct branch, using $1 \times 1$ convolutions on an $8 \times 8$ tensor-block-transformed image for fast processing, being one of the few current learned methods that decouples detection & description and can be processed independently.
 
 <img align="center" src="./figs/xfeat_arq.png" width=1000 />
@@ -87,7 +87,7 @@ conda create -n xfeat python=3.8
 conda activate xfeat
 ```
 
-Then, install [pytorch (>=1.10)](https://pytorch.org/get-started/previous-versions/) and then the rest of depencencies in case you want to run the demos:
+Then, install [pytorch (>=1.10)](https://pytorch.org/get-started/previous-versions/) and then the rest of the depencencies in case you want to run the demos:
 ```bash
 
 #CPU only, for GPU check in pytorch website the most suitable version to your gpu.
@@ -101,7 +101,7 @@ pip install opencv-contrib-python tqdm
 
 ## Usage
 
-For your convenience, we provide ready to use notebooks for some examples.
+For your convenience, we provide ready-to-use notebooks for some examples.
 
 |            **Description**     |  **Notebook**                     |
 |--------------------------------|-------------------------------|
@@ -191,7 +191,7 @@ To demonstrate the capabilities of XFeat, we provide a real-time matching demo w
 python3 realtime_demo.py -h
 ```
 
-Don't forget to press 's' to set a desired reference image. Notice that the demo only works correctly for planar scenes and rotation-only motion, because we're using a homography model.
+Don't forget to press 's' to set the desired reference image. Notice that the demo only works correctly for planar scenes and rotation-only motion, because we're using a homography model.
 
 If you want to run the demo with XFeat, please run:
 ```bash
